@@ -5160,8 +5160,16 @@ void Interpreter::Run(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtx_r
     }
 }
 
+// Defined in src/port/FrameStreamer.cpp (main app target, not this submodule -
+// forward-declared here instead of #included since libultraship's include
+// path doesn't reach src/port). extern "C" so namespace Fast can't mangle
+// this into Fast::FrameStreamer_CaptureFrame at link time. See
+// docs/liveview-integration.md.
+extern "C" void FrameStreamer_CaptureFrame(int width, int height);
+
 void Interpreter::EndFrame() {
     mRapi->EndFrame();
+    FrameStreamer_CaptureFrame(mGfxCurrentWindowDimensions.width, mGfxCurrentWindowDimensions.height);
     mWapi->SwapBuffersBegin();
     mRapi->FinishRender();
     mWapi->SwapBuffersEnd();

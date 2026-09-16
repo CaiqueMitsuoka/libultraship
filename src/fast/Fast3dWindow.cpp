@@ -31,11 +31,8 @@ Fast3dWindow::Fast3dWindow(std::shared_ptr<Ship::Gui> gui, std::shared_ptr<FastM
 #ifdef _WIN32
     AddAvailableWindowBackend(WindowBackend::FAST3D_DXGI_DX11);
 #endif
-#ifdef __APPLE__
-    if (Metal_IsSupported()) {
-        AddAvailableWindowBackend(WindowBackend::FAST3D_SDL_METAL);
-    }
-#endif
+    // Metal deliberately not registered: forcing OpenGL-only on all platforms
+    // so macOS dev matches the Linux deploy target (see n64-talk streaming plan).
     AddAvailableWindowBackend(WindowBackend::FAST3D_SDL_OPENGL);
 }
 
