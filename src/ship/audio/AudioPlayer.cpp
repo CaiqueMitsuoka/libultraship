@@ -87,10 +87,23 @@ int32_t AudioPlayer::GetNumOutputChannels() const {
     }
 }
 
+// Defined in src/port/AudioStreamer.cpp (main app target, not this submodule
+// - forward-declared here instead of #included since libultraship's include
+// path doesn't reach src/port, same as FrameStreamer/Interpreter::EndFrame).
+// See docs/membrane-integration.md.
+extern "C" void AudioStreamer_CaptureAudio(const uint8_t* buf, size_t len, int sampleRate, int channels);
+
 void AudioPlayer::Play(const uint8_t* buf, size_t len) {
     if (mAudioSettings.ChannelSetting != AudioChannelsSetting::audioMatrix51) {
-        // Stereo or Raw 5.1 passthrough
-        DoPlay(buf, len);
+        // Stereo or Raw 5.1 passthrough - buf/len already match
+        // GetNumOutputChannels() in this branch, so it's safe to stream as-is.
+        // (Matrix-51 mode is skipped below: buf here is still pre-decode
+        // stereo while GetNumOutputChannels() would report 6, which would
+        // mislabel the capture.)
+        AudioStreamer_CaptureAudio(buf, len, GetSampleRate(), GetNumOutputChannels());
+        // DoPlay(buf, len) deliberately not called: local audio output is off
+        // for the streaming setup - only AudioStreamer's consumer should hear
+        // this. See docs/membrane-integration.md.
         return;
     }
 
@@ -102,7 +115,11 @@ void AudioPlayer::Play(const uint8_t* buf, size_t len) {
     // Decode stereo to surround using sound matrix decoder
     const auto [surroundOut, surroundLen] = mSoundMatrixDecoder->Process(buf, len);
 
-    // Play the audio
-    DoPlay(surroundOut, surroundLen);
+    // Local audio output is off for the streaming setup (see the non-matrix
+    // branch above) - matrix-51 mode isn't captured (docs/membrane-integration.md
+    // notes the gap), so this path is silent either way rather than
+    // half-working (heard locally, not streamed).
+    (void)surroundOut;
+    (void)surroundLen;
 }
 } // namespace Ship
